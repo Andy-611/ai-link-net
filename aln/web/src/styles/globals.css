@@ -1,0 +1,257 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+/* ============================================================
+   FoundationProtocol Design System — "Clean Protocol"
+
+   Dual-theme: Light (default) + Dark
+   Notion-inspired warm neutrals with soft blue accent.
+
+   Architecture: @theme inline registers Tailwind tokens via var()
+   indirection. Actual color values live in :root / html.dark
+   so the cascade properly handles theme switching.
+   ============================================================ */
+
+/* --- Light Theme (default) --- */
+:root {
+  --t-bg: #ffffff;
+  --t-fg: #1a1a1a;
+  --t-muted: #f7f7f5;
+  --t-muted-fg: #91918e;
+  --t-border: rgba(0, 0, 0, 0.08);
+  --t-input: rgba(0, 0, 0, 0.05);
+  --t-ring: #2383e2;
+
+  --t-primary: #1a1a1a;
+  --t-primary-fg: #ffffff;
+  --t-secondary: #f0f0ee;
+  --t-secondary-fg: #1a1a1a;
+  --t-accent: #2383e2;
+  --t-accent-fg: #ffffff;
+  --t-destructive: #eb5757;
+  --t-destructive-fg: #ffffff;
+
+  --t-card: #ffffff;
+  --t-card-fg: #1a1a1a;
+  --t-popover: #ffffff;
+  --t-popover-fg: #1a1a1a;
+
+  --t-surface: rgba(0, 0, 0, 0.03);
+  --t-surface-hover: rgba(0, 0, 0, 0.06);
+
+  --t-success: #0f7b6c;
+  --t-warning: #c77c14;
+  --t-info: #2383e2;
+
+  --t-sender-bubble: rgba(0, 0, 0, 0.06);
+  --t-receiver-bubble: rgba(0, 0, 0, 0.03);
+
+  --t-sidebar: #fbfbfa;
+  --t-sidebar-fg: #1a1a1a;
+  --t-sidebar-border: rgba(0, 0, 0, 0.06);
+  --t-sidebar-accent: rgba(0, 0, 0, 0.04);
+
+  color-scheme: light;
+}
+
+/* --- Dark Theme --- */
+html.dark {
+  --t-bg: #191919;
+  --t-fg: #ebebeb;
+  --t-muted: #252525;
+  --t-muted-fg: #999999;
+  --t-border: rgba(255, 255, 255, 0.08);
+  --t-input: rgba(255, 255, 255, 0.06);
+  --t-ring: #4ca0e0;
+
+  --t-primary: #ebebeb;
+  --t-primary-fg: #191919;
+  --t-secondary: #2d2d2d;
+  --t-secondary-fg: #ebebeb;
+  --t-accent: #4ca0e0;
+  --t-accent-fg: #ffffff;
+  --t-destructive: #eb5757;
+  --t-destructive-fg: #ffffff;
+
+  --t-card: #202020;
+  --t-card-fg: #ebebeb;
+  --t-popover: #202020;
+  --t-popover-fg: #ebebeb;
+
+  --t-surface: rgba(255, 255, 255, 0.04);
+  --t-surface-hover: rgba(255, 255, 255, 0.07);
+
+  --t-success: #0f7b6c;
+  --t-warning: #c77c14;
+  --t-info: #4ca0e0;
+
+  --t-sender-bubble: rgba(255, 255, 255, 0.08);
+  --t-receiver-bubble: rgba(255, 255, 255, 0.04);
+
+  --t-sidebar: #1e1e1e;
+  --t-sidebar-fg: #ebebeb;
+  --t-sidebar-border: rgba(255, 255, 255, 0.06);
+  --t-sidebar-accent: rgba(255, 255, 255, 0.04);
+
+  color-scheme: dark;
+}
+
+/* --- Tailwind Theme Tokens (via indirection) --- */
+@theme inline {
+  --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: var(--t-bg);
+  --color-foreground: var(--t-fg);
+  --color-muted: var(--t-muted);
+  --color-muted-foreground: var(--t-muted-fg);
+  --color-border: var(--t-border);
+  --color-input: var(--t-input);
+  --color-ring: var(--t-ring);
+
+  --color-primary: var(--t-primary);
+  --color-primary-foreground: var(--t-primary-fg);
+  --color-secondary: var(--t-secondary);
+  --color-secondary-foreground: var(--t-secondary-fg);
+  --color-accent: var(--t-accent);
+  --color-accent-foreground: var(--t-accent-fg);
+  --color-destructive: var(--t-destructive);
+  --color-destructive-foreground: var(--t-destructive-fg);
+
+  --color-card: var(--t-card);
+  --color-card-foreground: var(--t-card-fg);
+  --color-popover: var(--t-popover);
+  --color-popover-foreground: var(--t-popover-fg);
+
+  --color-surface: var(--t-surface);
+  --color-surface-hover: var(--t-surface-hover);
+
+  --color-success: var(--t-success);
+  --color-warning: var(--t-warning);
+  --color-info: var(--t-info);
+
+  --color-sender-bubble: var(--t-sender-bubble);
+  --color-receiver-bubble: var(--t-receiver-bubble);
+
+  --color-sidebar: var(--t-sidebar);
+  --color-sidebar-foreground: var(--t-sidebar-fg);
+  --color-sidebar-border: var(--t-sidebar-border);
+  --color-sidebar-accent: var(--t-sidebar-accent);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --animate-message-in: message-in 150ms ease-out;
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-slide-up: slide-up 200ms ease-out;
+  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+
+  @keyframes message-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+}
+
+/* --- Base Styles --- */
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--t-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--t-muted-fg);
+}
+
+/* --- Selection --- */
+::selection {
+  background-color: color-mix(in srgb, var(--t-accent) 20%, transparent);
+  color: var(--t-fg);
+}
+
+/* --- Focus Ring --- */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* --- Glass surface --- */
+.glass {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+:root .glass {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+html.dark .glass {
+  background: rgba(25, 25, 25, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* --- Logo theme adaptation (invert dark logos to white in dark mode) --- */
+html.dark .logo-adapt {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

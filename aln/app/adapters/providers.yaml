@@ -1,0 +1,306 @@
+# Provider CLI adapter configurations
+# Maps HandlerConfig (protocol) to provider-specific CLI arguments
+
+claude:
+  provider_name: claude
+  executable: claude
+
+  field_mapping:
+    workdir:
+      # claude CLI 不支持 --cwd，通过 subprocess cwd 参数设置
+      type: no_mapping
+
+    trust_level:
+      flag: --permission-mode
+      type: enum
+      mapping:
+        untrusted: default
+        semi_trusted: dontAsk
+        fully_trusted: bypassPermissions
+
+    interaction_mode:
+      flag: -p
+      type: boolean_flag
+      add_when: batch
+
+    stream_output:
+      flag: --include-partial-messages
+      type: boolean_flag
+      add_when: true
+
+    output_format:
+      flag: --output-format
+      type: value
+
+    allowed_tools:
+      flag: --allowedTools
+      type: list
+
+    model:
+      flag: --model
+      type: value
+
+    max_budget_usd:
+      flag: --max-budget-usd
+      type: value
+
+    session_id:
+      flag: --session-id
+      type: value
+      mapping_fn: uuid_from_string  # Convert FP session_id to UUID5 (Claude CLI requires valid UUID)
+
+    system_prompt:
+      flag: --append-system-prompt
+      type: value
+
+  output:
+    format: json
+    text_path: [result]
+    session_id_path: [session_id]
+
+  resume:
+    flag: -r
+    use_session_id_arg: true
+
+codex:
+  provider_name: codex
+  executable: codex
+
+  # codex exec 作为基础命令
+  base_command: [exec, --skip-git-repo-check, --json, -c, shell_environment_policy.inherit=all]
+
+  # codex 通过 stdin 接收 prompt（使用 - 占位符）
+  prompt_via_stdin: true
+
+  field_mapping:
+    workdir:
+      flag: -C
+      type: value
+
+    trust_level:
+      type: composite
+      mappings:
+        untrusted:
+          - flag: -s
+            value: read-only
+        semi_trusted:
+          - flag: --full-auto
+            type: boolean_flag
+        fully_trusted:
+          - flag: --dangerously-bypass-approvals-and-sandbox
+            type: boolean_flag
+
+    interaction_mode:
+      # codex exec 本身是 batch 模式
+      type: no_mapping
+
+    stream_output:
+      # codex 不支持流式
+      type: no_mapping
+
+    output_format:
+      # codex 的 --json 已经在 base_command 里了
+      type: no_mapping
+
+    allowed_tools:
+      # codex 没有工具白名单配置
+      type: no_mapping
+
+    model:
+      flag: -m
+      type: value
+
+    max_budget_usd:
+      # codex 不支持
+      type: no_mapping
+
+    session_id:
+      # codex 自己管理 session
+      type: no_mapping
+
+    system_prompt:
+      # codex 使用 inline 模式（在 prompt 前加 <system>）
+      type: inline
+
+  output:
+    format: jsonl
+    text_path: []
+    session_id_path: [thread_id]
+
+  resume:
+    flag: resume
+    use_session_id_arg: true
+
+autowork:
+  provider_name: autowork
+  executable: autowork
+
+  # autowork 通过 --message flag 传递 prompt
+  prompt_flag: --message
+
+  field_mapping:
+    workdir:
+      flag: --workspace
+      type: value
+
+    trust_level:
+      # autowork 没有权限控制
+      type: no_mapping
+
+    interaction_mode:
+      type: no_mapping
+
+    stream_output:
+      type: no_mapping
+
+    output_format:
+      type: no_mapping
+
+    allowed_tools:
+      type: no_mapping
+
+    model:
+      type: no_mapping
+
+    max_budget_usd:
+      type: no_mapping
+
+    session_id:
+      flag: --surface-thread-id
+      type: value
+
+    system_prompt:
+      type: inline
+
+  output:
+    format: text
+    text_path: []
+    session_id_path: []
+
+  resume:
+    flag: --surface-thread-id
+    use_session_id_arg: true
+
+hermes:
+  provider_name: hermes
+  executable: hermes
+
+  # hermes chat --quiet -q "prompt" → inline system prompt 注入到 prompt 参数
+  base_command: [chat, --quiet]
+  prompt_via_stdin: false
+  prompt_flag: -q
+
+  env:
+    TERM: dumb
+    NO_COLOR: "1"
+
+  field_mapping:
+    workdir:
+      type: no_mapping
+
+    trust_level:
+      type: no_mapping
+
+    interaction_mode:
+      type: no_mapping
+
+    stream_output:
+      type: no_mapping
+
+    output_format:
+      type: no_mapping
+
+    allowed_tools:
+      flag: --toolsets
+      type: value
+
+    model:
+      flag: --model
+      type: value
+
+    max_budget_usd:
+      flag: --max-turns
+      type: value
+
+    session_id:
+      type: no_mapping
+
+    system_prompt:
+      type: inline
+
+  output:
+    format: text
+    text_path: []
+    session_id_path: []
+    session_id_regex: "session_id:\\s*(.+)"
+    frame_separator: "╭[^╮]*╮"
+    strip_patterns:
+      - "╭[^╮]*╮"
+      - "╰[^╯]*╯"
+      - "^[─━═]+$"
+      - "│"
+
+  resume:
+    flag: --resume
+    use_session_id_arg: true
+
+openclaw:
+  provider_name: openclaw
+  executable: openclaw
+
+  base_command: [agent, --agent, main, --json]
+
+  prompt_via_stdin: false
+  prompt_flag: --message
+  json_on_stderr: true
+
+  field_mapping:
+    workdir:
+      # openclaw 有自己的 workspace 机制，不通过命令行控制
+      type: no_mapping
+
+    trust_level:
+      # openclaw 无 trust_level 机制
+      type: no_mapping
+
+    interaction_mode:
+      # openclaw 不区分交互模式
+      type: no_mapping
+
+    stream_output:
+      # openclaw 不支持流式输出
+      type: no_mapping
+
+    output_format:
+      # openclaw 使用 --json 控制输出格式，在 base_command 中已包含
+      type: no_mapping
+
+    allowed_tools:
+      # openclaw 无工具白名单机制
+      type: no_mapping
+
+    model:
+      # openclaw 通过配置文件指定 model，不通过命令行
+      type: no_mapping
+
+    max_budget_usd:
+      # openclaw 无预算控制机制
+      type: no_mapping
+
+    session_id:
+      flag: --session-id
+      type: value
+
+    system_prompt:
+      # openclaw 有自己的 bootstrap 机制（~/.openclaw/workspace/）
+      # 不支持外部注入 system prompt
+      type: no_mapping
+
+  output:
+    format: json
+    text_path: [payloads, 0, text]
+    session_id_path: [meta, agentMeta, sessionId]
+
+  resume:
+    flag: --session-id
+    use_session_id_arg: true

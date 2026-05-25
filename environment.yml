@@ -1,0 +1,4 @@
+name: fp
+dependencies:
+  - python=3.13
+  - pip

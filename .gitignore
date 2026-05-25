@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+
+# Local environment
+.env
+.env.*
+.python-version
+
+# OS
+.DS_Store
+.vscode/
+.idea/
+
+# Agent tooling
+.claude/
+.codex/
+.worktree/
+
+# Runtime logs
+logs/
+demo/recordings/
+
+# Node.js / Web UI
+node_modules/
+src/web/node_modules/
+src/web/dist/
+**/.vite/
+src/web/vite.config.js
+src/web/vite.config.d.ts
+*.tsbuildinfo
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Local workspace
+reference/
+.fp-demo/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+.playwright-mcp/
+
+# GitHub (local only)
+.github/
+
+# Superpowers / Reviews (local only)
+docs/superpowers/
+docs/reviews/
