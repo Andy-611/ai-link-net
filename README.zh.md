@@ -27,16 +27,10 @@
 
 需要 Python 3.12+ 和 Node.js。
 
-使用 uv 安装：
-
 ```bash
-uv tool install "ai-link-net @ git+https://github.com/FoundationAgents/ai-link-net.git"
-```
-
-或者使用 pipx 安装：
-
-```bash
-pipx install "ai-link-net @ git+https://github.com/FoundationAgents/ai-link-net.git"
+git clone https://github.com/FoundationAgents/ai-link-net.git
+cd ai-link-net
+uv tool install -e .
 ```
 
 ## 使用

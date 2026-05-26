@@ -27,16 +27,10 @@ Build AI teams that work together — agents, humans, and tools connected throug
 
 Requires Python 3.12+ and Node.js.
 
-Install with uv:
-
 ```bash
-uv tool install "ai-link-net @ git+https://github.com/FoundationAgents/ai-link-net.git"
-```
-
-Or install with pipx:
-
-```bash
-pipx install "ai-link-net @ git+https://github.com/FoundationAgents/ai-link-net.git"
+git clone https://github.com/FoundationAgents/ai-link-net.git
+cd ai-link-net
+uv tool install -e .
 ```
 
 ## Usage
