@@ -184,7 +184,7 @@ def new_command(
 
     # Set parent via API only if user explicitly passed --parent
     if parent_url:
-        _auto_set_parent_if_needed(host_name, host_entry, storage, cli_printer, parent_url)
+        _auto_set_parent_if_needed(host_name, storage, cli_printer, parent_url)
 
 
 @command.command(
@@ -339,32 +339,22 @@ def list_command(storage: StorageManager, cli_printer: CliPrinter) -> None:
         cli_printer.echo("")
 
 
-_DEFAULT_PARENT_URL = os.getenv("ALN_PARENT_HOST_URL")
-
-
 def _auto_set_parent_if_needed(
     host_name: str,
-    host_entry: object | None,
     storage: StorageManager,
     cli_printer: CliPrinter,
-    parent_url: str | None = None,
+    parent_url: str,
 ) -> None:
-    """Set default parent on a running host if no parent is configured."""
-    has_parent = host_entry and getattr(host_entry, "parent_url", None)
-    if not parent_url and has_parent:
-        return
-    effective_url = parent_url or _DEFAULT_PARENT_URL
-    if not effective_url:
-        return
+    """Set explicit parent on a running host."""
     time.sleep(0.5)
     try:
         host_url = storage.get_host_url(host_name)
         client = HostClient(base_url=host_url, timeout=5.0)
-        client.host_update(HostUpdateRequest(host_name=host_name, parent_url=effective_url))
-        cli_printer.echo(f"Parent host configured: {effective_url}")
+        client.host_update(HostUpdateRequest(host_name=host_name, parent_url=parent_url))
+        cli_printer.echo(f"Parent host configured: {parent_url}")
     except Exception as e:
         cli_printer.echo(f"Warning: Failed to configure parent: {e}")
-        cli_printer.echo(f"You can manually set it later with: aln host set --parent {effective_url}")
+        cli_printer.echo(f"You can manually set it later with: aln host set --parent {parent_url}")
 
 
 def _resolve_target_hosts(host_name: str | None, storage: StorageManager) -> list[str]:
