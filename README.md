@@ -30,12 +30,11 @@ The demo shows a live AI-Link-Net workspace with multi-entity coordination, cros
 
 ## Installation
 
-Requires Python 3.12+ and Node.js.
+Requires Python 3.12+. The published package includes the compiled Web UI, so
+Node.js is not required at runtime.
 
 ```bash
-git clone https://github.com/FoundationAgents/ai-link-net.git
-cd ai-link-net
-uv tool install -e .
+uv tool install ai-link-net
 ```
 
 ## Usage
@@ -49,6 +48,30 @@ aln init
 This creates a default host, registers your human entity, starts the backend and web UI, and opens the browser.
 
 Run `aln --help` for the full command reference.
+
+## Updates
+
+AI-Link-Net checks PyPI at most once every 24 hours after a successful CLI
+command. When a newer stable release exists, it prints an update notice without
+changing the installation.
+
+```bash
+# Check immediately without installing
+aln update --check
+
+# Upgrade the uv tool and restart previously running services
+aln update
+```
+
+Set `ALN_DISABLE_UPDATE_CHECK=1` to disable background checks.
+
+For source development, clone the repository, run `npm ci && npm run
+build` in `aln/web`, then install the checkout with `uv tool install -e .`.
+Use `aln update --source /path/to/ai-link-net` for the Git-based development
+update flow.
+
+Maintainers should follow [`docs/releasing.md`](docs/releasing.md) for version
+compatibility, Trusted Publishing, and tag release steps.
 
 ### Quick Demo
 

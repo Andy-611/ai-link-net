@@ -1,0 +1,188 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Validate, test, and build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Tag must use stable semantic version format: vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          tag_version="${GITHUB_REF_NAME#v}"
+          project_version="$(
+            python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
+          )"
+          if [[ "$tag_version" != "$project_version" ]]; then
+            echo "Tag version $tag_version does not match pyproject.toml version $project_version"
+            exit 1
+          fi
+
+          git fetch origin main
+          tagged_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          if ! git merge-base --is-ancestor "$tagged_commit" origin/main; then
+            echo "Tagged commit $tagged_commit is not contained in origin/main"
+            exit 1
+          fi
+
+      - name: Install Web dependencies
+        working-directory: aln/web
+        run: npm ci --no-audit --no-fund
+
+      - name: Run Web tests
+        working-directory: aln/web
+        run: npm test
+
+      - name: Build Web application
+        working-directory: aln/web
+        run: npm run build
+
+      - name: Install Python dependencies
+        run: uv sync --extra dev
+
+      - name: Run Python tests
+        run: uv run pytest
+
+      - name: Build Python distributions
+        run: uv build
+
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+
+      - name: Verify wheel contents and dependencies
+        shell: python
+        run: |
+          from email.parser import BytesParser
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheels = list(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected one wheel, found {len(wheels)}")
+
+          with ZipFile(wheels[0]) as wheel:
+              names = wheel.namelist()
+              if "aln/web/dist/index.html" not in names:
+                  raise SystemExit("Wheel does not contain aln/web/dist/index.html")
+              if not any(name.startswith("aln/web/dist/assets/") for name in names):
+                  raise SystemExit("Wheel does not contain compiled Web assets")
+              metadata_name = next(
+                  name for name in names if name.endswith(".dist-info/METADATA")
+              )
+              metadata = BytesParser().parsebytes(wheel.read(metadata_name))
+
+          requirements = metadata.get_all("Requires-Dist", [])
+          fp_requirements = [
+              requirement
+              for requirement in requirements
+              if requirement.lower().startswith("foundation-protocol")
+          ]
+          if not fp_requirements:
+              raise SystemExit("Wheel does not depend on foundation-protocol")
+          if any("git+" in requirement for requirement in requirements):
+              raise SystemExit("Wheel metadata contains a Git dependency")
+
+      - name: Smoke-test wheel installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv venv .release-venv
+          uv pip install \
+            --python .release-venv/bin/python \
+            --default-index https://test.pypi.org/simple/ \
+            --no-deps \
+            "foundation-protocol>=0.1,<0.2"
+          uv pip install --python .release-venv/bin/python dist/*.whl
+          .release-venv/bin/aln --version
+          .release-venv/bin/aln -h
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/ai-link-net/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist/
+
+      - name: Publish distributions
+        uses: pypa/gh-action-pypi-publish@v1.14.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist/
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --verify-tag

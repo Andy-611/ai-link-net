@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from importlib.metadata import PackageNotFoundError, version
 
 import click
@@ -21,6 +22,7 @@ from .reset import command as reset_command
 from .status import command as health_command
 from .ui import command as ui_command
 from .update import command as update_command
+from .update_check import check_for_update, format_update_notice
 
 
 def _resolve_version() -> str:
@@ -100,8 +102,9 @@ for command in (
 
 
 def main(argv: list[str] | None = None) -> int:
+    effective_argv = argv if argv is not None else sys.argv[1:]
     try:
-        result = cli.main(args=argv, prog_name="aln", standalone_mode=False)
+        result = cli.main(args=effective_argv, prog_name="aln", standalone_mode=False)
     except click.UsageError as error:
         ctx = error.ctx
         if ctx is not None:
@@ -116,4 +119,12 @@ def main(argv: list[str] | None = None) -> int:
         return int(error.exit_code)
     if isinstance(result, int):
         return result
+
+    if "update" not in effective_argv:
+        update_result = check_for_update()
+        if update_result is not None:
+            notice = format_update_notice(update_result)
+            if notice is not None:
+                click.echo(f"\n{notice}", err=True)
+
     return 0
