@@ -15,10 +15,12 @@ import {
 
 import { cn, extractEntityUid, normalizeTimestamp } from "@/lib/utils";
 import {
-  sendMessage,
-  getMessages,
-  markMessagesRead,
+  createSession,
   deleteFriend,
+  getMessages,
+  listSessions,
+  markMessagesRead,
+  sendMessage,
   uploadAvatar,
 } from "@/api";
 import type { MailboxMessage } from "@/api";
@@ -37,7 +39,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageItem } from "./message-item";
 import { SessionDialog } from "./session-panel";
 import { CarbonCopyPanel } from "./carbon-copy-panel";
-import { createSession } from "@/api";
 import type { CarbonCopyMessage, Contact, Message, MessagePayload } from "@/types";
 
 interface ChatAreaProps {
@@ -130,6 +131,10 @@ export function ChatArea({ contact, onBack }: ChatAreaProps) {
   const prevContactUidRef = useRef<string | null>(null);
   const prevMessageCountRef = useRef(0);
   const contactUid = extractEntityUid(contact.entity_uid);
+  const hasContactSessionChoice = Object.prototype.hasOwnProperty.call(
+    contactSessionMap,
+    contactUid,
+  );
   const rawActiveSessionId = contactSessionMap[contactUid] ?? null;
 
   const getViewport = useCallback((): HTMLElement | null => {
@@ -178,6 +183,32 @@ export function ChatArea({ contact, onBack }: ChatAreaProps) {
       setContactSession(contactUid, null);
     }
   }, [contactUid, isHumanToHuman, rawActiveSessionId, setContactSession]);
+
+  useEffect(() => {
+    if (isHumanToHuman || !currentUser || hasContactSessionChoice) return;
+
+    let cancelled = false;
+    listSessions(currentUser.entity_uid, contactUid)
+      .then((sessions) => {
+        const latestSession = sessions.find(
+          (session) => !isImplicitSessionId(session.session_id),
+        );
+        if (!cancelled && latestSession) {
+          setContactSession(contactUid, latestSession.session_id);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    contactUid,
+    currentUser,
+    hasContactSessionChoice,
+    isHumanToHuman,
+    setContactSession,
+  ]);
 
   // refresh contact display info when selected (#10)
   useEffect(() => {

@@ -7,6 +7,10 @@ const DEFAULT_API_BASE = "http://localhost:7001/api/v1";
 
 /** Get current API base URL from localStorage user profile or fallback to default. */
 function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "");
+  }
+
   const raw = localStorage.getItem("fp_current_user");
   if (raw) {
     try {
@@ -62,6 +66,9 @@ export function apiUrl(path: string): string {
 
 /** Safely unwrap StandardResponse — throws if data is absent. */
 export function unwrap<T>(response: StandardResponse<T>): T {
+  if (response.success === false) {
+    throw new Error(response.message || "Request failed");
+  }
   if (response.data === undefined) {
     throw new Error(response.message || "Unexpected empty response");
   }

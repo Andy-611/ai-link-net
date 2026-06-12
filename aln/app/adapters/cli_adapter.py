@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from loguru import logger
 
+from aln.app.adapters.provider_executable import ProviderExecutableResolver
+
 if TYPE_CHECKING:
     from fp.handler import HandlerConfig
 
@@ -108,6 +110,8 @@ class CLIAdapter:
     def __init__(self, provider: str):
         self.provider = provider
         self.mapping = CLIMapping.from_yaml(provider)
+        resolved = ProviderExecutableResolver().resolve(provider, self.mapping.executable)
+        self.executable = resolved.command if resolved else self.mapping.executable
 
     def run_turn(
         self,
@@ -218,7 +222,11 @@ class CLIAdapter:
             raise RuntimeError(f"{self.provider} CLI timeout after {config.timeout}s") from e
         except FileNotFoundError as e:
             raise RuntimeError(
-                f"{self.provider} CLI not found: {self.mapping.executable}"
+                f"{self.provider} CLI not found: {self.executable}"
+            ) from e
+        except PermissionError as e:
+            raise RuntimeError(
+                f"{self.provider} CLI is not executable: {self.executable}"
             ) from e
 
     def compose_prompt(
@@ -272,7 +280,7 @@ class CLIAdapter:
         system_prompt: str | None,
     ) -> list[str]:
         """Build CLI command - core mapping logic."""
-        cmd = [self.mapping.executable] + self.mapping.base_command
+        cmd = [self.executable] + self.mapping.base_command
         is_resume = provider_session_id is not None
 
         # New session: map session_id if supported

@@ -1,44 +1,81 @@
 /* Chat page — contacts sidebar + conversation area. */
 
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { MessageSquare, Users } from "lucide-react";
 
 import { cn, EASE_SMOOTH } from "@/lib/utils";
 import { useAppStore } from "@/stores/app";
 import { ContactList } from "@/components/chat/contact-list";
 import { ChatArea } from "@/components/chat/chat-area";
+import {
+  CreateGroupDialog,
+  GroupRoom,
+  GroupRoomList,
+} from "@/components/chat/group-room";
+import { listGroupSessions } from "@/api";
+import type { SessionInfo } from "@/api";
 import type { Contact } from "@/types";
 
 export function ChatPage() {
-  const navigate = useNavigate();
-  const contacts = useAppStore((s) => s.contacts);
+  const currentUser = useAppStore((s) => s.currentUser);
   const loadContacts = useAppStore((s) => s.loadContacts);
   const refreshOnlineStatus = useAppStore((s) => s.refreshOnlineStatus);
   const setActiveChatUid = useAppStore((s) => s.setActiveChatUid);
 
+  const [viewMode, setViewMode] = useState<"contacts" | "rooms">("rooms");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<SessionInfo | null>(null);
+  const [rooms, setRooms] = useState<SessionInfo[]>([]);
   const [showChat, setShowChat] = useState(false);
-  const [contactsLoaded, setContactsLoaded] = useState(false);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [createRoomOpen, setCreateRoomOpen] = useState(false);
 
   useEffect(() => {
-    loadContacts().then(() => setContactsLoaded(true));
+    loadContacts();
     refreshOnlineStatus();
     const interval = setInterval(refreshOnlineStatus, 30_000);
     return () => clearInterval(interval);
   }, [loadContacts, refreshOnlineStatus]);
 
-  // #13: redirect to entities page when no contacts after initial load
-  useEffect(() => {
-    if (contactsLoaded && contacts.length === 0) {
-      navigate("/entities");
-    }
-  }, [contactsLoaded, contacts.length, navigate]);
-
   const handleSelectContact = useCallback(
     (contact: Contact) => {
+      setViewMode("contacts");
       setSelectedContact(contact);
+      setSelectedRoom(null);
       setActiveChatUid(contact.entity_uid);
+      setShowChat(true);
+    },
+    [setActiveChatUid],
+  );
+
+  const loadRooms = useCallback(async () => {
+    if (!currentUser) return;
+    setLoadingRooms(true);
+    try {
+      const nextRooms = await listGroupSessions(currentUser.entity_uid);
+      setRooms(nextRooms);
+      setSelectedRoom((current) => {
+        if (!current) return current;
+        return nextRooms.find((room) => room.session_id === current.session_id) ?? null;
+      });
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (viewMode === "rooms") {
+      loadRooms();
+    }
+  }, [viewMode, loadRooms]);
+
+  const handleSelectRoom = useCallback(
+    (room: SessionInfo) => {
+      setViewMode("rooms");
+      setSelectedRoom(room);
+      setSelectedContact(null);
+      setActiveChatUid(`group:${room.session_id}`);
       setShowChat(true);
     },
     [setActiveChatUid],
@@ -48,6 +85,26 @@ export function ChatPage() {
     setShowChat(false);
     setActiveChatUid(null);
   }, [setActiveChatUid]);
+
+  const handleRoomUpdated = useCallback((room: SessionInfo) => {
+    setRooms((prev) => [
+      room,
+      ...prev.filter((item) => item.session_id !== room.session_id),
+    ]);
+    setSelectedRoom(room);
+  }, []);
+
+  const handleRoomDeleted = useCallback(
+    (roomId: string) => {
+      setRooms((prev) => prev.filter((room) => room.session_id !== roomId));
+      setSelectedRoom((current) => (
+        current?.session_id === roomId ? null : current
+      ));
+      setShowChat(false);
+      setActiveChatUid(null);
+    },
+    [setActiveChatUid],
+  );
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
@@ -61,7 +118,46 @@ export function ChatPage() {
         <div className="px-4 h-14 flex items-center border-b border-sidebar-border shrink-0">
           <h1 className="font-heading text-sm font-semibold">Messages</h1>
         </div>
-        <ContactList onSelect={handleSelectContact} />
+        <div className="grid grid-cols-2 gap-1 border-b border-sidebar-border p-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("contacts")}
+            className={cn(
+              "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
+              viewMode === "contacts"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-surface hover:text-foreground",
+            )}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Direct
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("rooms")}
+            className={cn(
+              "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
+              viewMode === "rooms"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-surface hover:text-foreground",
+            )}
+          >
+            <Users className="h-3.5 w-3.5" />
+            Rooms
+          </button>
+        </div>
+        {viewMode === "contacts" ? (
+          <ContactList onSelect={handleSelectContact} />
+        ) : (
+          <GroupRoomList
+            rooms={rooms}
+            selectedRoomId={selectedRoom?.session_id}
+            loading={loadingRooms}
+            onSelect={handleSelectRoom}
+            onCreate={() => setCreateRoomOpen(true)}
+            onRefresh={loadRooms}
+          />
+        )}
       </div>
 
       {/* Chat area — full width on mobile, flex on desktop */}
@@ -73,6 +169,14 @@ export function ChatPage() {
       >
         {selectedContact ? (
           <ChatArea contact={selectedContact} onBack={handleBack} />
+        ) : selectedRoom ? (
+          <GroupRoom
+            room={selectedRoom}
+            onBack={handleBack}
+            onRefreshRooms={loadRooms}
+            onRoomUpdated={handleRoomUpdated}
+            onRoomDeleted={handleRoomDeleted}
+          />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
             {/* Animated network icon with layered glow */}
@@ -110,15 +214,24 @@ export function ChatPage() {
               className="text-center"
             >
               <p className="text-sm font-medium text-foreground/60">
-                Select a contact
+                {viewMode === "rooms" ? "Select a room" : "Select a contact"}
               </p>
               <p className="text-xs text-muted-foreground/40 mt-1">
-                to start a conversation
+                {viewMode === "rooms" ? "to enter the meeting room" : "to start a conversation"}
               </p>
             </motion.div>
           </div>
         )}
       </div>
+
+      <CreateGroupDialog
+        open={createRoomOpen}
+        onOpenChange={setCreateRoomOpen}
+        onCreated={(room) => {
+          setRooms((prev) => [room, ...prev.filter((item) => item.session_id !== room.session_id)]);
+          handleSelectRoom(room);
+        }}
+      />
     </div>
   );
 }

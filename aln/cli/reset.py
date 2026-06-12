@@ -47,12 +47,15 @@ def _stop_ui_process(fp_home_path: Path) -> bool:
 
 def _find_orphan_host_pids(exclude_pids: set[int]) -> list[int]:
     """Find host runtime pids not tracked in config."""
-    result = subprocess.run(
-        ["ps", "-ax", "-o", "pid=,command="],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["ps", "-ax", "-o", "pid=,command="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return []
 
     if result.returncode != 0:
         return []
