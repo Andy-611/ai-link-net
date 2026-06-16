@@ -27,8 +27,8 @@ import type { MailboxMessage } from "@/api";
 import { useAppStore } from "@/stores/app";
 import { useWsListener } from "@/providers/websocket-provider";
 import type { WsEvent } from "@/hooks/use-websocket";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { PixelAvatar } from "@/components/ui/pixel-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,6 +157,10 @@ export function ChatArea({ contact, onBack }: ChatAreaProps) {
   const isHumanToHuman =
     currentUser?.kind === "human" && contact.kind === "human";
   const isLocalEntity = currentHostUid != null && freshContact.host_uid === currentHostUid;
+  const contactProvider =
+    typeof freshContact.metadata?.provider === "string"
+      ? freshContact.metadata.provider
+      : undefined;
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -540,21 +544,13 @@ export function ChatArea({ contact, onBack }: ChatAreaProps) {
             </button>
           )}
           <div className="relative group shrink-0">
-            <Avatar className="h-8 w-8 border border-border">
-              {avatarCache[freshContact.entity_uid] && (
-                <AvatarImage src={avatarCache[freshContact.entity_uid]} />
-              )}
-              <AvatarFallback
-                className={cn(
-                  "text-xs font-heading font-semibold",
-                  freshContact.kind === "agent"
-                    ? "bg-accent/15 text-accent"
-                    : "bg-primary/15 text-primary",
-                )}
-              >
-                {freshContact.name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <PixelAvatar
+              name={freshContact.name}
+              kind={freshContact.kind}
+              provider={contactProvider}
+              src={avatarCache[freshContact.entity_uid]}
+              size="sm"
+            />
             {isLocalEntity && (
               <label className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
                 <Camera className="h-3.5 w-3.5 text-white" />

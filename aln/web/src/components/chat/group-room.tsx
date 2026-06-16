@@ -11,7 +11,6 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import {
-  Activity,
   ArrowLeft,
   Bot,
   Check,
@@ -46,7 +45,6 @@ import {
   sendGroupMessage,
 } from "@/api";
 import type { MailboxMessage, SessionInfo, GroupMemberInfo } from "@/api";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,11 +55,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PixelOfficeRoom } from "@/components/chat/pixel-office-room";
+import { PixelAvatar } from "@/components/ui/pixel-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWsListener } from "@/providers/websocket-provider";
 import { useAppStore } from "@/stores/app";
 import type { Contact, Message, MessagePayload } from "@/types";
-import { cn, extractEntityUid, kindAvatarClass, normalizeTimestamp } from "@/lib/utils";
+import { cn, extractEntityUid, normalizeTimestamp } from "@/lib/utils";
 import type { WsEvent } from "@/hooks/use-websocket";
 
 interface GroupRoomListProps {
@@ -123,10 +123,6 @@ function memberIcon(kind: string) {
 
 function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4));
-}
-
-function memberDisplayInitials(name: string): string {
-  return name.trim().slice(0, 2).toUpperCase() || "FP";
 }
 
 function roomTimeLabel(timestamp?: string): string {
@@ -249,11 +245,12 @@ function ContactPicker({
             <div className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded border border-border">
               {selected && <Check className="h-3.5 w-3.5 text-primary" />}
             </div>
-            <Avatar className="h-8 w-8 border border-border">
-              <AvatarFallback className={cn("text-xs", kindAvatarClass(contact.kind))}>
-                {memberDisplayInitials(contact.name)}
-              </AvatarFallback>
-            </Avatar>
+            <PixelAvatar
+              name={contact.name}
+              kind={contact.kind}
+              provider={typeof contact.metadata?.provider === "string" ? contact.metadata.provider : undefined}
+              size="sm"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-medium">{contact.name}</span>
@@ -335,11 +332,13 @@ export function GroupRoomList({
                 </div>
                 <div className="mt-2 flex -space-x-1 overflow-hidden">
                   {members.slice(0, 5).map((member) => (
-                    <Avatar key={member.address} className="h-5 w-5 border border-background">
-                      <AvatarFallback className={cn("text-[8px]", kindAvatarClass(member.kind))}>
-                        {memberDisplayInitials(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <PixelAvatar
+                      key={member.address}
+                      name={member.name}
+                      kind={member.kind}
+                      size="xs"
+                      className="border-background"
+                    />
                   ))}
                 </div>
               </motion.button>
@@ -558,8 +557,8 @@ export function GroupRoom({
   const [addMembersOpen, setAddMembersOpen] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState(false);
   const [removingMemberAddress, setRemovingMemberAddress] = useState<string | null>(null);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(272);
-  const [rightPanelWidth, setRightPanelWidth] = useState(320);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(224);
+  const [rightPanelWidth, setRightPanelWidth] = useState(300);
   const [tokenPanelHeight, setTokenPanelHeight] = useState(260);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -569,6 +568,31 @@ export function GroupRoom({
   const contactByUid = useMemo(
     () => new Map(contacts.map((contact) => [contact.entity_uid, contact])),
     [contacts],
+  );
+  const avatarByUid = useMemo(
+    () =>
+      new Map(
+        members.map((member) => [
+          member.entity_uid,
+          contactByUid.get(member.entity_uid)?.has_avatar
+            ? avatarCache[member.entity_uid]
+            : undefined,
+        ]),
+      ),
+    [avatarCache, contactByUid, members],
+  );
+  const providerByUid = useMemo(
+    () =>
+      new Map(
+        members.map((member) => {
+          const provider = contactByUid.get(member.entity_uid)?.metadata?.provider;
+          return [
+            member.entity_uid,
+            typeof provider === "string" ? provider : undefined,
+          ];
+        }),
+      ),
+    [contactByUid, members],
   );
   const currentMember = currentUser
     ? memberByUid(members, currentUser.entity_uid)
@@ -722,7 +746,7 @@ export function GroupRoom({
       const handlePointerMove = (moveEvent: PointerEvent) => {
         const delta = moveEvent.clientX - startX;
         const nextWidth = panel === "left" ? startWidth + delta : startWidth - delta;
-        const clampedWidth = Math.min(460, Math.max(220, nextWidth));
+        const clampedWidth = Math.min(460, Math.max(196, nextWidth));
         if (panel === "left") setLeftPanelWidth(clampedWidth);
         else setRightPanelWidth(clampedWidth);
       };
@@ -824,7 +848,7 @@ export function GroupRoom({
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-sm font-semibold">{room.name ?? "Group room"}</h2>
           <p className="text-[11px] text-muted-foreground">
-            {members.length} members · shared context
+            {members.length} members / shared context
           </p>
         </div>
         <Button
@@ -875,14 +899,13 @@ export function GroupRoom({
                           active ? "border-accent/30 bg-accent/10" : "border-transparent bg-transparent",
                         )}
                       >
-                        <Avatar className="h-8 w-8 border border-border">
-                          {contact?.has_avatar && avatarCache[member.entity_uid] && (
-                            <AvatarImage src={avatarCache[member.entity_uid]} />
-                          )}
-                          <AvatarFallback className={cn("text-xs", kindAvatarClass(member.kind))}>
-                            {memberDisplayInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <PixelAvatar
+                          name={member.name}
+                          kind={member.kind}
+                          provider={providerByUid.get(member.entity_uid)}
+                          src={contact?.has_avatar ? avatarCache[member.entity_uid] : undefined}
+                          size="sm"
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 items-center gap-1.5">
                             <span className="truncate text-sm font-medium">{member.name}</span>
@@ -955,77 +978,18 @@ export function GroupRoom({
         </button>
 
         <main className="flex min-h-0 flex-col overflow-hidden bg-background lg:col-start-3">
-          <div className="relative min-h-[28rem] flex-1 overflow-hidden border-b border-border bg-[radial-gradient(circle_at_center,color-mix(in_srgb,var(--t-accent)_8%,transparent),transparent_58%)]">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_srgb,var(--t-border)_45%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_srgb,var(--t-border)_45%,transparent)_1px,transparent_1px)] bg-[size:44px_44px] opacity-40" />
-            <div className="absolute left-1/2 top-1/2 h-[48%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-border bg-surface shadow-inner" />
-            <div className="absolute left-1/2 top-1/2 flex h-24 w-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-lg border border-border bg-background/80 px-4 text-center shadow-sm glass">
-              <Activity className="mb-2 h-5 w-5 text-accent" />
-              <p className="text-xs font-semibold">Shared Context</p>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                {messages.length} turns · {totalTokens} est. tokens
-              </p>
-            </div>
-
-            {latestMessage && (
-              <div className="absolute left-4 right-4 top-5 z-10 rounded-lg border border-border bg-background/95 px-3 py-2 text-sm shadow-sm sm:hidden">
-                <p className="line-clamp-2 text-foreground/80">
-                  {String(latestMessage.payload.text ?? "")}
-                </p>
-              </div>
-            )}
-
-            {layout.map(({ member, left, top }) => {
-              const active = member.entity_uid === activeSpeakerUid;
-              const recent = recentByMember.get(member.entity_uid);
-              const contact = contactByUid.get(member.entity_uid);
-              const Icon = memberIcon(member.kind);
-              return (
-                <motion.div
-                  key={member.address}
-                  className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
-                  style={{ left: `${left}%`, top: `${top}%` }}
-                  animate={{ y: active ? [0, -5, 0] : 0 }}
-                  transition={{ duration: 1.4, repeat: active ? Infinity : 0 }}
-                >
-                  {recent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "mb-2 hidden max-w-48 rounded-lg border px-3 py-2 text-xs shadow-sm sm:block",
-                        active ? "border-accent/30 bg-background" : "border-border bg-background/90",
-                      )}
-                    >
-                      <p className="line-clamp-2 text-foreground/80">
-                        {String(recent.payload.text ?? "")}
-                      </p>
-                    </motion.div>
-                  )}
-                  <div
-                    className={cn(
-                      "relative flex h-16 w-16 items-center justify-center rounded-full border-2 bg-background shadow-sm transition-colors",
-                      active ? "border-accent" : "border-border",
-                    )}
-                  >
-                    <Avatar className="h-12 w-12">
-                      {contact?.has_avatar && avatarCache[member.entity_uid] && (
-                        <AvatarImage src={avatarCache[member.entity_uid]} />
-                      )}
-                      <AvatarFallback className={cn("text-sm font-semibold", kindAvatarClass(member.kind))}>
-                        {memberDisplayInitials(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background">
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </span>
-                  </div>
-                  <div className="mt-2 max-w-20 text-center sm:max-w-28">
-                    <p className="truncate text-[11px] font-semibold sm:text-xs">{member.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{member.role}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
+          <div className="relative min-h-[28rem] flex-1 overflow-hidden border-b border-border">
+            <PixelOfficeRoom
+              roomName={room.name}
+              seats={layout}
+              latestMessage={latestMessage}
+              recentByMember={recentByMember}
+              activeSpeakerUid={activeSpeakerUid}
+              avatarByUid={avatarByUid}
+              providerByUid={providerByUid}
+              turnCount={messages.length}
+              tokenCount={totalTokens}
+            />
           </div>
 
           <div className="shrink-0 border-t border-border bg-background p-3">
