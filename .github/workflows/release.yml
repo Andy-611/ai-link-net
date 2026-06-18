@@ -125,11 +125,6 @@ jobs:
         run: |
           set -euo pipefail
           uv venv .release-venv
-          uv pip install \
-            --python .release-venv/bin/python \
-            --default-index https://test.pypi.org/simple/ \
-            --no-deps \
-            "foundation-protocol>=0.1,<0.2"
           uv pip install --python .release-venv/bin/python dist/*.whl
           .release-venv/bin/aln --version
           .release-venv/bin/aln -h
@@ -142,12 +137,12 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish to TestPyPI
+    name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
     environment:
-      name: testpypi
-      url: https://test.pypi.org/project/ai-link-net/
+      name: pypi
+      url: https://pypi.org/project/ai-link-net/
     permissions:
       id-token: write
 
@@ -160,8 +155,6 @@ jobs:
 
       - name: Publish distributions
         uses: pypa/gh-action-pypi-publish@v1.14.0
-        with:
-          repository-url: https://test.pypi.org/legacy/
 
   release:
     name: Create GitHub Release

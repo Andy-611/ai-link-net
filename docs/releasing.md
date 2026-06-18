@@ -14,27 +14,21 @@ foundation-protocol>=0.1,<0.2
 补丁版本可以直接兼容。Foundation Protocol 升级次版本时，需要明确更新并测试
 AI-Link-Net 的兼容范围。
 
-## 当前 TestPyPI 实验配置
+## 配置 PyPI Trusted Publishing
 
-当前 Fork 实验使用 TestPyPI。Foundation Protocol 已从 TestPyPI 安装，ALN 的
-release workflow 也发布到 TestPyPI。为 ALN Fork 添加 Trusted Publisher：
+在 PyPI 创建 `foundation-protocol` 和 `ai-link-net` 两个项目。每个项目添加一条
+GitHub Trusted Publisher：
 
-| TestPyPI 项目 | GitHub 仓库 | Workflow | Environment |
+| PyPI 项目 | GitHub 仓库 | Workflow | Environment |
 |---|---|---|---|
-| `ai-link-net` | `Kevin5600/ai-link-net` | `release.yml` | `testpypi` |
+| `foundation-protocol` | `FoundationAgents/foundation-protocol` | `release.yml` | `pypi` |
+| `ai-link-net` | `FoundationAgents/ai-link-net` | `release.yml` | `pypi` |
 
-在 GitHub 仓库中创建名为 `testpypi` 的 Environment。Workflow 通过 GitHub
-OIDC 获取一次性发布凭据，不需要保存 TestPyPI API Token。
+然后在两个 GitHub 仓库中分别创建名为 `pypi` 的 Environment。Workflow 通过
+GitHub OIDC 获取一次性发布凭据，不需要保存 PyPI API Token。
 
-如果 TestPyPI 项目尚不存在，可以先配置 Pending Publisher，让第一次成功发布
-自动创建项目。
-
-合并回上游或正式发布到 PyPI 前，需要：
-
-1. 删除 `pyproject.toml` 中的 `[[tool.uv.index]]` 和 `[tool.uv.sources]`。
-2. 重新运行 `uv lock`，确认 `uv.lock` 中不再包含 TestPyPI URL。
-3. 将 release workflow 的 Environment、项目 URL 和 `repository-url` 切回 PyPI。
-4. 删除 wheel 冒烟安装前单独从 TestPyPI 安装 Foundation Protocol 的步骤。
+如果 PyPI 项目尚不存在，可以先配置 Pending Publisher，让第一次成功发布自动
+创建项目。
 
 ## 发布 Foundation Protocol
 
@@ -48,12 +42,12 @@ OIDC 获取一次性发布凭据，不需要保存 TestPyPI API Token。
    git push origin v0.1.0
    ```
 
-Workflow 会验证 Tag、运行测试、构建发布包、发布到配置的包索引，最后创建
-GitHub Release。当前 Fork 实验的目标索引是 TestPyPI。
+Workflow 会验证 Tag、运行测试、构建发布包、发布 PyPI，最后创建 GitHub
+Release。
 
 ## 发布 AI-Link-Net
 
-1. 确认需要的 Foundation Protocol 版本已经可以从当前目标仓库安装。
+1. 确认需要的 Foundation Protocol 版本已经可以从 PyPI 安装。
 2. 必要时更新 `foundation-protocol` 的兼容版本范围。
 3. 修改 `pyproject.toml` 中的 `project.version`。
 4. 更新 Python 锁文件并安装 Web 依赖：
@@ -96,7 +90,6 @@ Workflow 会拒绝以下发布：
 ## 用户更新
 
 正式安装版本最多每 24 小时检查一次 PyPI。检查失败不会影响普通命令。
-TestPyPI 实验不验证自动更新；更新检测和 `aln update` 仍以正式 PyPI 为准。
 
 ```bash
 # 只检查
