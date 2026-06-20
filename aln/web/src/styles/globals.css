@@ -493,6 +493,239 @@ select {
   height: 100%;
 }
 
+.pixel-room {
+  background:
+    linear-gradient(180deg, rgba(12, 25, 44, 0.94), rgba(6, 13, 26, 0.98)),
+    #071326;
+}
+
+.pixel-room__stage {
+  position: absolute;
+  top: 3.1rem;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: auto;
+  max-width: calc(100% - 9.2rem);
+  height: calc(100% - 7.95rem);
+  aspect-ratio: 8 / 7;
+  overflow: hidden;
+  transform: translateX(-50%);
+  border: 4px solid #1c2d45;
+  background: #a6bcc5;
+  box-shadow:
+    inset 0 0 0 4px #d6dce0,
+    inset 0 0 0 8px #667886,
+    0 16px 40px rgba(0, 0, 0, 0.35);
+  image-rendering: pixelated;
+}
+
+.pixel-room__wall {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: calc(100% / 7);
+  overflow: hidden;
+  border-bottom: 0;
+  background-color: #d8d8d8;
+  background-image: url("/vendor/pixel-office/generated/wall-tile.png");
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+}
+
+.pixel-room__floor {
+  position: absolute;
+  inset: calc(100% / 7) 0 calc(100% / 7);
+  z-index: 0;
+  overflow: hidden;
+  background-color: #a7c0ca;
+  background-image: url("/vendor/pixel-office/generated/floor-tile.png");
+  background-repeat: repeat;
+  background-size: auto 20%;
+}
+
+.pixel-room__sprite {
+  display: block;
+  flex: none;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.pixel-room__bottom-window-band {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: calc(100% / 7);
+  overflow: hidden;
+  background-image: url("/vendor/pixel-office/generated/window-tile.png");
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  pointer-events: none;
+}
+
+.pixel-room__bottom-door-sprite {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 6;
+  width: auto;
+  height: calc(100% / 7);
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+}
+
+.pixel-room__elevator-door {
+  position: absolute;
+  left: 25%;
+  top: 0;
+  z-index: 5;
+  width: auto;
+  height: calc(100% / 7);
+  image-rendering: pixelated;
+}
+
+.pixel-room__prop {
+  position: absolute;
+  z-index: 9;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.pixel-room__prop--performance-chart {
+  left: 40.625%;
+  top: 3.5714%;
+}
+
+.pixel-room__prop--fire-extinguisher {
+  left: 20.3125%;
+  top: 8.9286%;
+  z-index: 7;
+}
+
+.pixel-room__prop--plant-large {
+  left: 3.125%;
+  top: 71.4286%;
+  z-index: 16;
+}
+
+.pixel-room__prop--plant-small {
+  left: 93.75%;
+  top: 75%;
+  z-index: 16;
+}
+
+.pixel-room__prop--side-table {
+  left: 4%;
+  top: 43%;
+  z-index: 10;
+}
+
+.pixel-room__prop--plant-tall {
+  left: calc(4% + 3px);
+  top: calc(43% - 38px);
+  z-index: 13;
+}
+
+.pixel-room__prop--conference-table {
+  left: 50%;
+  top: 50%;
+  z-index: 11;
+  transform: translate(-50%, -50%);
+}
+
+.pixel-room__prop--printer {
+  left: 53.125%;
+  top: 7.1429%;
+  z-index: 8;
+}
+
+.pixel-room__prop--vending-machine {
+  left: 87.5%;
+  top: 5.3571%;
+  z-index: 8;
+}
+
+.pixel-room__prop--bookshelf {
+  left: 6.25%;
+  top: 3.5714%;
+  z-index: 8;
+}
+
+.pixel-room__prop--coffee-machine {
+  left: 81.25%;
+  top: 8.9286%;
+  z-index: 8;
+}
+
+.pixel-room__prop--water-dispenser {
+  left: 75%;
+  top: 7.1429%;
+  z-index: 8;
+}
+
+.pixel-room__member {
+  position: absolute;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+}
+
+.pixel-room__member .pixel-room__sprite {
+  position: relative;
+  z-index: 2;
+}
+
+.pixel-room__member-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -6%;
+  z-index: 0;
+  width: 90%;
+  height: 14%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  filter: blur(2px);
+}
+
+.pixel-room__active-ring {
+  position: absolute;
+  left: 50%;
+  bottom: -8%;
+  z-index: 0;
+  width: 72%;
+  height: 24%;
+  transform: translateX(-50%);
+  border: 3px solid rgba(255, 211, 109, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(255, 211, 109, 0.48);
+}
+
+.pixel-room__label {
+  left: 50%;
+  z-index: 6;
+  top: calc(100% - 0.05rem);
+}
+
+.pixel-room__member.is-active .pixel-room__label {
+  color: #ffd36d;
+}
+
+.pixel-room__speech {
+  z-index: 55;
+  width: min(13.5rem, calc(100% - 44px));
+  transform: translate(-50%, -22%);
+}
+
+.pixel-room__minimap div {
+  background:
+    radial-gradient(ellipse at center, rgba(94, 140, 168, 0.55) 0 36%, transparent 37%),
+    linear-gradient(90deg, rgba(159, 190, 224, 0.18) 0 2px, transparent 2px 18px),
+    linear-gradient(0deg, rgba(159, 190, 224, 0.18) 0 2px, transparent 2px 18px),
+    rgba(255, 255, 255, 0.08);
+}
+
 .office3d__speech {
   position: absolute;
   z-index: 12;
