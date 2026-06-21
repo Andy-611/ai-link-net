@@ -14,6 +14,21 @@ export interface SendMessageResponse {
   status: string;
 }
 
+export interface SendGroupMessageResponse {
+  message_id: string;
+  mail_id: string;
+  from_entity_uid: string;
+  session_id: string;
+  group_name: string | null;
+  recipient_count: number;
+  recipients: Array<{
+    address: string;
+    entity_uid: string;
+    host_uid: string;
+  }>;
+  status: string;
+}
+
 export interface MailboxMessage {
   message_id: string;
   mail_id: string;
@@ -21,6 +36,9 @@ export interface MailboxMessage {
   sender: string;
   recipient: string[];
   payload: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  conversation_type?: string | null;
+  group_id?: string | null;
   timestamp: string;
   direction: "inbound" | "outbound";
   is_read: boolean;
@@ -40,6 +58,22 @@ export async function sendMessage(
       to_address: toAddress,
       text: payload.text,
       session_id: sessionId,
+    },
+  );
+  return unwrap(data);
+}
+
+export async function sendGroupMessage(
+  fromEntity: string,
+  sessionId: string,
+  text: string,
+): Promise<SendGroupMessageResponse> {
+  const { data } = await apiClient.post<StandardResponse<SendGroupMessageResponse>>(
+    "/messages/send_group",
+    {
+      from_entity: fromEntity,
+      session_id: sessionId,
+      text,
     },
   );
   return unwrap(data);
