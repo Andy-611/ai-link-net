@@ -232,7 +232,7 @@ export function ChatArea({ contact, onBack }: ChatAreaProps) {
     setLoadingHistory(true);
     setMessages([]);
 
-    getMessages(currentUser.entity_uid, 200)
+    getMessages(currentUser.entity_uid)
       .then((mailbox) => {
         // Load CC messages into sidebar store
         const ccMsgs = extractCarbonCopies(mailbox);

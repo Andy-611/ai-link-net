@@ -506,6 +506,7 @@ class CLIAdapter:
 
         text = self._extract_by_path(data, self.mapping.text_path)
         session_id = self._extract_by_path(data, self.mapping.session_id_path)
+        metadata = self._extract_usage_metadata(data)
         
         # Only use fallback if we actually mapped session_id to something
         # Otherwise, if provider doesn't output a session_id, don't poison it with the FP session_id
@@ -521,6 +522,7 @@ class CLIAdapter:
             return_code=result.returncode if text else 1,
             raw_stdout=result.stdout,
             raw_stderr=result.stderr,
+            metadata=metadata,
         )
 
     def _parse_jsonl(
@@ -564,15 +566,7 @@ class CLIAdapter:
 
                 # Extract usage info
                 if event_type == "turn.completed":
-                    usage = event.get("usage", {})
-                    if usage:
-                        metadata["usage"] = usage
-                        metadata["input_tokens"] = usage.get("input_tokens", 0)
-                        metadata["cached_input_tokens"] = usage.get("cached_input_tokens", 0)
-                        metadata["output_tokens"] = usage.get("output_tokens", 0)
-                        metadata["total_tokens"] = (
-                            usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-                        )
+                    metadata.update(self._extract_usage_metadata(event))
 
                 # Extract thread_id
                 if event_type == "thread.started":
@@ -597,6 +591,56 @@ class CLIAdapter:
             raw_stderr=result.stderr,
             metadata=metadata,
         )
+
+    @classmethod
+    def _extract_usage_metadata(cls, data: dict[str, Any]) -> dict[str, Any]:
+        """Extract normalized usage metadata from provider output."""
+        raw_usage = data.get("usage")
+        if isinstance(raw_usage, dict) and not raw_usage:
+            return {}
+        usage = raw_usage if isinstance(raw_usage, dict) else data
+        input_tokens = cls._first_int(usage, ["input_tokens", "prompt_tokens"])
+        cached_input_tokens = cls._first_int(
+            usage,
+            [
+                "cached_input_tokens",
+                "cache_read_input_tokens",
+                "cached_tokens",
+            ],
+        )
+        output_tokens = cls._first_int(usage, ["output_tokens", "completion_tokens"])
+        total_tokens = cls._first_int(usage, ["total_tokens"])
+        if total_tokens == 0:
+            total_tokens = input_tokens + output_tokens
+
+        if total_tokens == 0 and not isinstance(raw_usage, dict):
+            return {}
+
+        return {
+            "usage": usage,
+            "input_tokens": input_tokens,
+            "cached_input_tokens": cached_input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+        }
+
+    @staticmethod
+    def _first_int(data: dict[str, Any], keys: list[str]) -> int:
+        """Return the first non-negative integer-like value for keys."""
+        for key in keys:
+            value = data.get(key)
+            if isinstance(value, bool) or value is None:
+                continue
+            if isinstance(value, int):
+                return max(0, value)
+            if isinstance(value, float):
+                return max(0, int(value))
+            if isinstance(value, str):
+                try:
+                    return max(0, int(float(value)))
+                except ValueError:
+                    continue
+        return 0
 
     @staticmethod
     def _extract_by_path(data: dict, path: list[str]) -> Any:

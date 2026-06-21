@@ -81,11 +81,11 @@ export async function sendGroupMessage(
 
 export async function getMessages(
   entityUid: string,
-  limit = 100,
+  limit: number | null = null,
 ): Promise<MailboxMessage[]> {
   const { data } = await apiClient.get<StandardResponse<MailboxMessage[]>>(
     `/messages/${entityUid}`,
-    { params: { limit } },
+    { params: limit === null ? undefined : { limit } },
   );
   return data.data ?? [];
 }

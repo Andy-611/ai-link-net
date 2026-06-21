@@ -3,7 +3,7 @@ import * as THREE from "three";
 
 import type { GroupMemberInfo } from "@/api";
 import type { Message } from "@/types";
-import { extractEntityUid } from "@/lib/utils";
+import { extractEntityUid, formatCompactTokenCount } from "@/lib/utils";
 
 interface PixelRoomSeat {
   member: GroupMemberInfo;
@@ -19,6 +19,7 @@ interface PixelOfficeRoomProps {
   activeSpeakerUid: string;
   avatarByUid: Map<string, string | undefined>;
   providerByUid: Map<string, string | undefined>;
+  tokenLabel: string;
   turnCount: number;
   tokenCount: number;
 }
@@ -1256,6 +1257,7 @@ export function PixelOfficeRoom({
   latestMessage,
   activeSpeakerUid,
   providerByUid,
+  tokenLabel,
   turnCount,
   tokenCount,
 }: PixelOfficeRoomProps) {
@@ -1448,7 +1450,7 @@ export function PixelOfficeRoom({
 
       <div className="office3d__status">
         <span>{turnCount} turns</span>
-        <span>{tokenCount} est. tokens</span>
+        <span>{formatCompactTokenCount(tokenCount)} {tokenLabel}</span>
       </div>
 
       <div className="office3d__minimap">

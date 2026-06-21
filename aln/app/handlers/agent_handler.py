@@ -12,9 +12,11 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from aln.app.adapters.cli_adapter import CLIAdapter
+from aln.app.adapters.cli_adapter import CLIAdapter, CLIResult
 from aln.app.adapters.prompts import AGENT_HANDLER_PROMPT_TEMPLATE
+from aln.app.schemas.token_usage import TokenUsageRecord
 from aln.app.service.session_service import SessionService
+from aln.app.service.token_usage_service import TokenUsageService
 from fp.core.session import Session, SessionKind
 from fp.handler import BaseHandler, HandlerConfig
 from fp.message import InvokePayload, Message, MessageKind
@@ -217,11 +219,48 @@ class AgentHandler(BaseHandler):
                 raise
 
         self._save_provider_session_id(session_id, result.provider_session_id)
+        self._record_token_usage(session_id, messages, result)
 
         if result.return_code != 0:
             logger.warning(
                 f"[{self.entity.name}] Provider 执行失败 (exit_code={result.return_code})"
             )
+
+    def _record_token_usage(
+        self,
+        session_id: str,
+        messages: list[Message],
+        result: CLIResult,
+    ) -> None:
+        provider = getattr(self, "provider", None)
+        if not provider or not result.metadata:
+            return
+
+        host_uid = getattr(getattr(self.entity, "host", None), "uid", None)
+        if not isinstance(host_uid, str) or not host_uid:
+            logger.warning(f"[{self.entity.name}] Skip token usage record: missing host uid")
+            return
+
+        record = TokenUsageRecord.from_cli_metadata(
+            host_uid=host_uid,
+            entity_uid=self.entity.uid,
+            entity_name=self.entity.name,
+            provider=provider,
+            session_id=session_id,
+            provider_session_id=result.provider_session_id,
+            message_ids=[message.message_id for message in messages],
+            model=self.config.model,
+            return_code=result.return_code,
+            metadata=result.metadata,
+        )
+        if record is None:
+            return
+
+        TokenUsageService(host_uid).append(record)
+        logger.info(
+            f"[{self.entity.name}] Token usage recorded "
+            f"session_id={session_id} provider={provider} total={record.total_tokens}"
+        )
 
     def _group_messages_by_session(
         self, queued_messages: list[QueuedMessage]

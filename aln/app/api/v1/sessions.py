@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from fp import Entity, Host, Session
-from aln.app.schemas import StandardResponse
+
 from aln.app.misc.exception_handler import exception_wrapper
 from aln.app.misc.provider import get_host_runtime, get_target_entity
+from aln.app.schemas import StandardResponse
+from aln.app.schemas.token_usage import TokenUsageSummary
 from aln.app.service.session_service import SessionService
+from aln.app.service.token_usage_service import TokenUsageService
 
 router = APIRouter(prefix="/entities/{entity_uid}/sessions", tags=["sessions"])
 
@@ -254,6 +257,26 @@ async def delete_group_session(
         success=True,
         message="Group session deleted successfully",
         data={},
+    )
+
+
+@router.get("/{session_id}/usage", response_model=StandardResponse[TokenUsageSummary])
+@exception_wrapper(catch_http_exc=True)
+async def get_session_token_usage(
+    entity_uid: str,
+    session_id: str,
+    target_entity: Annotated[Entity, Depends(get_target_entity)],
+    current_host: Annotated[Host, Depends(get_host_runtime)],
+) -> StandardResponse[TokenUsageSummary]:
+    """Get actual provider token usage for one visible session."""
+    if session_id not in target_entity.sessions:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+    summary = TokenUsageService(current_host.uid).summarize_session(session_id)
+    return StandardResponse[TokenUsageSummary](
+        success=True,
+        message=f"Token usage retrieved for session: {session_id}",
+        data=summary,
     )
 
 

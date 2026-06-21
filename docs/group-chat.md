@@ -27,8 +27,9 @@ The chat page has a `Rooms` view for group collaboration.
 - Resize the left entity panel and right history/token panel on desktop.
 
 The center room presents a virtual meeting space. The left panel lists active
-entities, and the right panel shows chat history plus a local token budget
-estimate.
+entities, and the right panel shows chat history plus token usage. When provider
+CLI output exposes usage data, the panel shows actual session totals; otherwise
+it falls back to a local text estimate.
 
 When the Direct chat CarbonCopy panel is opened for an agent, tabs are grouped
 by conversation context:
@@ -89,6 +90,16 @@ Message sending uses:
 ```text
 POST /api/v1/messages/send_group
 ```
+
+Token usage reads use:
+
+```text
+GET /api/v1/entities/{entity_uid}/sessions/{session_id}/usage
+```
+
+Provider usage records are captured at the `AgentHandler` CLI boundary and
+stored in the host token ledger, so group rooms can aggregate real Codex JSONL
+`turn.completed.usage` values across participating agents.
 
 ## Current Boundary
 
