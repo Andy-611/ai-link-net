@@ -28,6 +28,41 @@ export interface GroupMemberInfo {
   can_remove: boolean;
 }
 
+export interface TokenUsageTotals {
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+}
+
+export interface TokenUsageRecord {
+  record_id: string;
+  host_uid: string;
+  entity_uid: string;
+  entity_name: string;
+  provider: string;
+  session_id: string;
+  provider_session_id?: string | null;
+  message_ids: string[];
+  model?: string | null;
+  return_code: number;
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  raw_usage: Record<string, unknown>;
+  created_at: number;
+}
+
+export interface TokenUsageSummary {
+  session_id: string;
+  totals: TokenUsageTotals;
+  records: TokenUsageRecord[];
+  providers: string[];
+  entity_uids: string[];
+  has_actual_usage: boolean;
+}
+
 export async function listSessions(
   entityUid: string,
   contactUid?: string,
@@ -106,6 +141,16 @@ export async function deleteGroupSession(
     `/entities/${entityUid}/sessions/groups/${sessionId}`,
   );
   unwrap(data);
+}
+
+export async function getSessionTokenUsage(
+  entityUid: string,
+  sessionId: string,
+): Promise<TokenUsageSummary> {
+  const { data } = await apiClient.get<StandardResponse<TokenUsageSummary>>(
+    `/entities/${entityUid}/sessions/${sessionId}/usage`,
+  );
+  return unwrap(data);
 }
 
 export async function renameSession(

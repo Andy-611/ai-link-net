@@ -44,6 +44,14 @@ const NAV_ITEMS: NavItem[] = [
   { icon: Users, label: "My Entities", path: "/entities" },
 ];
 
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <div className={cn("brand-mark", className)} aria-label="Foundation Agents">
+      <img src="/logo-black-1.png" alt="" className="brand-mark__image" />
+    </div>
+  );
+}
+
 export function MainLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,7 +87,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
       {/* --- Desktop Sidebar --- */}
       <aside className="hidden md:flex w-16 flex-col items-center border-r border-sidebar-border bg-sidebar py-4 gap-2">
         {/* Brand logo */}
-        <div className="pixel-brand-mark mb-3 h-8 w-8" aria-label="AI Office">AI</div>
+        <BrandMark className="mb-3 h-8 w-8" />
 
         {/* Nav items with glow indicator */}
         <nav className="flex flex-col gap-1 flex-1">
@@ -200,7 +208,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <div className="pixel-brand-mark h-7 w-7" aria-label="AI Office">AI</div>
+          <BrandMark className="h-7 w-7" />
           <span className="font-heading text-sm font-semibold">AI Office</span>
         </div>
         <div className="flex items-center gap-2">

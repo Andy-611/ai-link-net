@@ -6,7 +6,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { motion } from "framer-motion";
@@ -18,7 +17,6 @@ import {
   ChevronRight,
   Clock3,
   Gauge,
-  GripHorizontal,
   GripVertical,
   History,
   Loader2,
@@ -40,12 +38,13 @@ import {
   createGroupSession,
   deleteGroupSession,
   getMessages,
+  getSessionTokenUsage,
   markMessagesRead,
   removeGroupMember,
   sendGroupMessage,
 } from "@/api";
 import { getApiErrorMessage } from "@/api/client";
-import type { MailboxMessage, SessionInfo, GroupMemberInfo } from "@/api";
+import type { MailboxMessage, SessionInfo, GroupMemberInfo, TokenUsageSummary } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +61,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWsListener } from "@/providers/websocket-provider";
 import { useAppStore } from "@/stores/app";
 import type { Contact, Message, MessagePayload } from "@/types";
-import { cn, extractEntityUid, normalizeTimestamp } from "@/lib/utils";
+import {
+  cn,
+  extractEntityUid,
+  formatCompactTokenCount,
+  formatInteger,
+  normalizeTimestamp,
+} from "@/lib/utils";
 import type { WsEvent } from "@/hooks/use-websocket";
 
 interface GroupRoomListProps {
@@ -120,10 +125,6 @@ const KIND_ICONS: Record<string, typeof Bot> = {
 
 function memberIcon(kind: string) {
   return KIND_ICONS[kind] ?? Users;
-}
-
-function estimateTokens(text: string): number {
-  return Math.max(1, Math.ceil(text.length / 4));
 }
 
 function roomTimeLabel(timestamp?: string): string {
@@ -556,16 +557,15 @@ export function GroupRoom({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [tokenLimit, setTokenLimit] = useState(8_000);
+  const [loadingTokenUsage, setLoadingTokenUsage] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageSummary | null>(null);
   const [addMembersOpen, setAddMembersOpen] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState(false);
   const [removingMemberAddress, setRemovingMemberAddress] = useState<string | null>(null);
   const [leftPanelWidth, setLeftPanelWidth] = useState(224);
   const [rightPanelWidth, setRightPanelWidth] = useState(300);
-  const [tokenPanelHeight, setTokenPanelHeight] = useState(260);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const members = useMemo(() => mergeRoomMembers(room), [room]);
   const contactByUid = useMemo(
@@ -612,14 +612,13 @@ export function GroupRoom({
     "--room-left-resizer-width": leftPanelOpen ? "0.5rem" : "0rem",
     "--room-right-track": rightPanelOpen ? `${rightPanelWidth}px` : "2.75rem",
     "--room-right-resizer-width": rightPanelOpen ? "0.5rem" : "0rem",
-    "--token-panel-height": `${tokenPanelHeight}px`,
   } as CSSProperties;
 
   const loadHistory = useCallback(async () => {
     if (!currentUser) return;
     setLoadingHistory(true);
     try {
-      const mailbox = await getMessages(currentUser.entity_uid, 300);
+      const mailbox = await getMessages(currentUser.entity_uid);
       const roomMessages = mailbox
         .map((entry) => mailboxToGroupMessage(entry, room.session_id))
         .filter((message): message is Message => message !== null);
@@ -637,10 +636,24 @@ export function GroupRoom({
     }
   }, [currentUser, room.session_id]);
 
+  const loadTokenUsage = useCallback(async () => {
+    if (!currentUser) return;
+    setLoadingTokenUsage(true);
+    try {
+      setTokenUsage(await getSessionTokenUsage(currentUser.entity_uid, room.session_id));
+    } catch {
+      setTokenUsage(null);
+    } finally {
+      setLoadingTokenUsage(false);
+    }
+  }, [currentUser, room.session_id]);
+
   useEffect(() => {
     setMessages([]);
+    setTokenUsage(null);
     loadHistory();
-  }, [loadHistory]);
+    loadTokenUsage();
+  }, [loadHistory, loadTokenUsage]);
 
   useEffect(() => {
     return addListener((event: WsEvent) => {
@@ -652,24 +665,28 @@ export function GroupRoom({
         }
         return [...prev, event.message as Message];
       });
+      loadTokenUsage();
     });
-  }, [addListener, room.session_id]);
-
-  useEffect(() => {
-    const viewport = scrollAreaRef.current?.querySelector<HTMLElement>(
-      "[data-slot='scroll-area-viewport']",
-    );
-    if (!viewport) return;
-    viewport.scrollTop = viewport.scrollHeight;
-  }, [messages.length]);
+  }, [addListener, loadTokenUsage, room.session_id]);
 
   const latestMessage = messages[messages.length - 1];
   const activeSpeakerUid = latestMessage ? extractEntityUid(latestMessage.sender) : "";
-  const totalTokens = messages.reduce(
-    (sum, message) => sum + estimateTokens(String(message.payload.text ?? "")),
-    0,
-  );
-  const tokenPercent = Math.min(100, Math.round((totalTokens / tokenLimit) * 100));
+  const hasActualTokenUsage = tokenUsage?.has_actual_usage ?? false;
+  const actualTokenTotals = tokenUsage?.totals;
+  const totalTokens = actualTokenTotals?.total_tokens ?? 0;
+  const tokenRecordCount = tokenUsage?.records.length ?? 0;
+  const tokenProviderCount = tokenUsage?.providers.length ?? 0;
+  const compactTotalTokens = formatCompactTokenCount(totalTokens);
+  const exactTotalTokens = formatInteger(totalTokens);
+  const tokenBreakdown = [
+    { label: "input", title: "input total", value: actualTokenTotals?.input_tokens ?? 0 },
+    { label: "cache", title: "cache read", value: actualTokenTotals?.cached_input_tokens ?? 0 },
+    { label: "output", title: "output", value: actualTokenTotals?.output_tokens ?? 0 },
+    { label: "reqs", title: "requests", value: tokenRecordCount },
+  ];
+  const tokenUsageHint = hasActualTokenUsage
+    ? `${formatInteger(tokenRecordCount)} provider usage ${tokenRecordCount === 1 ? "record" : "records"}.`
+    : "Waiting for provider usage records.";
 
   const recentByMember = useMemo(() => {
     const map = new Map<string, Message>();
@@ -762,28 +779,6 @@ export function GroupRoom({
       window.addEventListener("pointerup", handlePointerUp, { once: true });
     },
     [leftPanelWidth, rightPanelWidth],
-  );
-
-  const startTokenPanelResize = useCallback(
-    (event: ReactPointerEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      const startY = event.clientY;
-      const startHeight = tokenPanelHeight;
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        const delta = moveEvent.clientY - startY;
-        const nextHeight = startHeight - delta;
-        setTokenPanelHeight(Math.min(460, Math.max(180, nextHeight)));
-      };
-
-      const handlePointerUp = () => {
-        window.removeEventListener("pointermove", handlePointerMove);
-      };
-
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp, { once: true });
-    },
-    [tokenPanelHeight],
   );
 
   const handleRoomUpdated = (updatedRoom: SessionInfo) => {
@@ -990,6 +985,7 @@ export function GroupRoom({
               activeSpeakerUid={activeSpeakerUid}
               avatarByUid={avatarByUid}
               providerByUid={providerByUid}
+              tokenLabel={hasActualTokenUsage ? "actual tokens" : "tokens"}
               turnCount={messages.length}
               tokenCount={totalTokens}
             />
@@ -1029,7 +1025,7 @@ export function GroupRoom({
           <GripVertical className="h-4 w-4" />
         </button>
 
-        <aside className="hidden min-h-0 border-l border-border bg-sidebar/70 xl:col-start-5 xl:flex xl:flex-col">
+        <aside className="hidden min-w-0 min-h-0 border-l border-border bg-sidebar/70 xl:col-start-5 xl:flex xl:flex-col">
           {rightPanelOpen ? (
             <>
               <div className="flex h-11 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
@@ -1044,8 +1040,8 @@ export function GroupRoom({
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <ScrollArea ref={scrollAreaRef} className="min-h-0 flex-1">
-                <div className="space-y-2 p-3">
+              <div className="min-w-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="min-w-0 space-y-2 p-3">
                   {loadingHistory && (
                     <div className="flex justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -1061,85 +1057,98 @@ export function GroupRoom({
                       <div
                         key={message.message_id}
                         className={cn(
-                          "rounded-lg border px-3 py-2",
+                          "min-w-0 max-w-full overflow-hidden rounded-lg border px-3 py-2",
                           isSelf ? "border-primary/15 bg-primary/5" : "border-border bg-background",
                         )}
                       >
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <span className="truncate text-xs font-semibold">
+                        <div className="mb-1 flex min-w-0 items-center justify-between gap-2">
+                          <span className="min-w-0 truncate text-xs font-semibold">
                             {sender?.name ?? extractEntityUid(message.sender)}
                           </span>
                           <span className="shrink-0 text-[10px] text-muted-foreground">
                             {roomTimeLabel(message.timestamp)}
                           </span>
                         </div>
-                        <p className="text-xs leading-relaxed text-foreground/80">
+                        <p className="w-full max-w-full whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/80 [overflow-wrap:anywhere] [word-break:break-word]">
                           {String(message.payload.text ?? "")}
                         </p>
                       </div>
                     );
                   })}
                 </div>
-              </ScrollArea>
-              <button
-                type="button"
-                className="flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-sidebar-border bg-sidebar/50 text-muted-foreground hover:bg-surface hover:text-foreground"
-                onPointerDown={startTokenPanelResize}
-                title="Resize token limits panel"
-              >
-                <GripHorizontal className="h-3.5 w-3.5" />
-              </button>
-              <div
-                className="shrink-0 overflow-y-auto border-t border-sidebar-border p-4"
-                style={{ height: "var(--token-panel-height)" }}
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <Gauge className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-semibold">Token Limits</span>
+              </div>
+              <div className="basis-[28%] min-h-[13.5rem] max-h-[16.5rem] shrink-0 overflow-hidden border-t border-sidebar-border p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold">Token Usage</span>
                 </div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
-                      <span>Estimated usage</span>
-                      <span>{totalTokens} / {tokenLimit}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-surface">
-                      <div
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-primary/20 bg-primary/10 p-2.5 shadow-inner shadow-primary/5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Actual usage
+                          {loadingTokenUsage && <Loader2 className="h-3 w-3 animate-spin" />}
+                        </p>
+                        <motion.p
+                          key={`${hasActualTokenUsage}-${totalTokens}`}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="truncate text-2xl font-semibold text-foreground"
+                          title={`${exactTotalTokens} tokens`}
+                        >
+                          {compactTotalTokens}
+                        </motion.p>
+                      </div>
+                      <Badge
+                        variant={hasActualTokenUsage ? "default" : "outline"}
                         className={cn(
-                          "h-full rounded-full transition-all",
-                          tokenPercent > 85 ? "bg-destructive" : tokenPercent > 65 ? "bg-warning" : "bg-success",
+                          "rounded-md px-2 py-0.5 text-[10px]",
+                          !hasActualTokenUsage && "text-muted-foreground",
                         )}
-                        style={{ width: `${tokenPercent}%` }}
-                      />
+                      >
+                        {hasActualTokenUsage ? "Live" : "Waiting"}
+                      </Badge>
+                    </div>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {exactTotalTokens} tokens recorded
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {tokenBreakdown.map((item) => (
+                      <div
+                        key={item.label}
+                        className="min-w-0 rounded-md border border-border bg-background px-2 py-1.5"
+                        title={item.title}
+                      >
+                        <p className="truncate text-xs font-semibold" title={formatInteger(item.value)}>
+                          {formatCompactTokenCount(item.value)}
+                        </p>
+                        <p className="truncate text-[9px] text-muted-foreground">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-[10px]">
+                    <span className="text-muted-foreground">Providers</span>
+                    <div className="flex min-w-0 items-center gap-1">
+                      <span className="font-medium text-foreground">
+                        {formatInteger(tokenProviderCount)}
+                      </span>
+                      {tokenUsage?.providers.slice(0, 2).map((provider) => (
+                        <Badge
+                          key={provider}
+                          variant="outline"
+                          className="max-w-20 truncate rounded-md px-1.5 py-0 text-[10px]"
+                        >
+                          {provider}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
-                  <input
-                    type="range"
-                    min={2000}
-                    max={32000}
-                    step={1000}
-                    value={tokenLimit}
-                    onChange={(event) => setTokenLimit(Number(event.target.value))}
-                    className="w-full accent-current"
-                  />
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-md border border-border bg-background px-2 py-2">
-                      <p className="text-sm font-semibold">{messages.length}</p>
-                      <p className="text-[10px] text-muted-foreground">turns</p>
-                    </div>
-                    <div className="rounded-md border border-border bg-background px-2 py-2">
-                      <p className="text-sm font-semibold">{members.length}</p>
-                      <p className="text-[10px] text-muted-foreground">entities</p>
-                    </div>
-                    <div className="rounded-md border border-border bg-background px-2 py-2">
-                      <p className="text-sm font-semibold">{tokenPercent}%</p>
-                      <p className="text-[10px] text-muted-foreground">budget</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-md border border-border bg-background p-2">
-                    <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      Limit is local for this demo panel.
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+                    <Clock3 className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <p className="truncate text-[10px] leading-tight text-muted-foreground">
+                      {tokenUsageHint}
                     </p>
                   </div>
                 </div>

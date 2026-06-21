@@ -471,6 +471,27 @@ select {
     0 2px 0 rgba(0, 0, 0, 0.45);
 }
 
+.brand-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid var(--pixel-ink);
+  border-radius: 4px;
+  background: #eef3f7;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.7),
+    0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.brand-mark__image {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
 /* --- 3D office meeting room --- */
 .office3d {
   position: relative;

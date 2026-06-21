@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { MessageSquare, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageSquare, Users } from "lucide-react";
 
 import { cn, EASE_SMOOTH } from "@/lib/utils";
 import { useAppStore } from "@/stores/app";
@@ -32,6 +32,7 @@ export function ChatPage() {
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [roomsError, setRoomsError] = useState<string | null>(null);
   const [createRoomOpen, setCreateRoomOpen] = useState(false);
+  const [messagesPanelOpen, setMessagesPanelOpen] = useState(true);
 
   useEffect(() => {
     loadContacts();
@@ -116,59 +117,105 @@ export function ChatPage() {
       {/* Contact sidebar — hidden on mobile when chat is open */}
       <div
         className={cn(
-          "w-full md:w-72 min-h-0 border-r border-border bg-sidebar flex flex-col shrink-0",
+          "min-h-0 border-r border-border bg-sidebar flex flex-col shrink-0 transition-[width] duration-200",
+          messagesPanelOpen ? "w-full md:w-72" : "w-full md:w-12",
           showChat ? "hidden md:flex" : "flex",
         )}
       >
-        <div className="px-4 h-14 flex items-center border-b border-sidebar-border shrink-0">
-          <h1 className="font-heading text-sm font-semibold">Messages</h1>
+        <div className={cn("min-h-0 flex-1 flex-col", messagesPanelOpen ? "flex" : "flex md:hidden")}>
+          <div className="px-4 h-14 flex items-center justify-between border-b border-sidebar-border shrink-0">
+            <h1 className="font-heading text-sm font-semibold">Messages</h1>
+            <button
+              type="button"
+              onClick={() => setMessagesPanelOpen(false)}
+              className="hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground md:flex"
+              aria-label="Collapse messages panel"
+              title="Collapse messages"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1 border-b border-sidebar-border p-2">
+            <button
+              type="button"
+              onClick={() => setViewMode("contacts")}
+              className={cn(
+                "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
+                viewMode === "contacts"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-surface hover:text-foreground",
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Direct
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("rooms")}
+              className={cn(
+                "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
+                viewMode === "rooms"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-surface hover:text-foreground",
+              )}
+            >
+              <Users className="h-3.5 w-3.5" />
+              Rooms
+            </button>
+          </div>
+          {viewMode === "contacts" ? (
+            <ContactList onSelect={handleSelectContact} />
+          ) : (
+            <>
+              {roomsError && (
+                <div className="mx-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+                  {roomsError}
+                </div>
+              )}
+              <GroupRoomList
+                rooms={rooms}
+                selectedRoomId={selectedRoom?.session_id}
+                loading={loadingRooms}
+                onSelect={handleSelectRoom}
+                onCreate={() => setCreateRoomOpen(true)}
+                onRefresh={loadRooms}
+              />
+            </>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-1 border-b border-sidebar-border p-2">
-          <button
-            type="button"
-            onClick={() => setViewMode("contacts")}
-            className={cn(
-              "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
-              viewMode === "contacts"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-surface hover:text-foreground",
-            )}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            Direct
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("rooms")}
-            className={cn(
-              "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
-              viewMode === "rooms"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-surface hover:text-foreground",
-            )}
-          >
-            <Users className="h-3.5 w-3.5" />
-            Rooms
-          </button>
-        </div>
-        {viewMode === "contacts" ? (
-          <ContactList onSelect={handleSelectContact} />
-        ) : (
-          <>
-            {roomsError && (
-              <div className="mx-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
-                {roomsError}
-              </div>
-            )}
-            <GroupRoomList
-            rooms={rooms}
-            selectedRoomId={selectedRoom?.session_id}
-            loading={loadingRooms}
-            onSelect={handleSelectRoom}
-            onCreate={() => setCreateRoomOpen(true)}
-            onRefresh={loadRooms}
-          />
-          </>
+        {!messagesPanelOpen && (
+          <div className="hidden h-full flex-col items-center gap-3 py-3 md:flex">
+            <button
+              type="button"
+              onClick={() => setMessagesPanelOpen(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+              aria-label="Expand messages panel"
+              title="Expand messages"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMessagesPanelOpen(true)}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg border border-sidebar-border transition-colors",
+                viewMode === "rooms"
+                  ? "bg-primary/15 text-primary"
+                  : "bg-sidebar-accent text-muted-foreground hover:text-foreground",
+              )}
+              aria-label="Open messages"
+              title="Messages"
+            >
+              {viewMode === "rooms" ? (
+                <Users className="h-4 w-4" />
+              ) : (
+                <MessageSquare className="h-4 w-4" />
+              )}
+            </button>
+            <span className="mt-1 select-none text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground [writing-mode:vertical-rl]">
+              Messages
+            </span>
+          </div>
         )}
       </div>
 

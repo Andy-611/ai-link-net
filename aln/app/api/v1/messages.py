@@ -277,7 +277,7 @@ def _format_message(mail_entry: dict) -> dict | None:
 async def get_messages(
     entity_uid: str,
     current_host: Annotated[Host, Depends(get_host_runtime)],
-    limit: int = Query(default=100, ge=1, le=1000),
+    limit: int | None = Query(default=None, ge=1),
 ) -> StandardResponse[list[dict[str, Any]]]:
     """Get messages for an entity from its mailbox."""
     entity = current_host.get_entity(entity_uid)
@@ -286,7 +286,8 @@ async def get_messages(
 
     mailbox = Mailbox(entity_uid, Path(entity.mailbox_path))
     mails = mailbox.list_mails()
-    mails = mails[-limit:] if len(mails) > limit else mails
+    if limit is not None and len(mails) > limit:
+        mails = mails[-limit:]
 
     messages = []
     for mail_entry in mails:

@@ -22,6 +22,7 @@ function renderRoom() {
       avatarByUid={new Map()}
       providerByUid={new Map()}
       turnCount={0}
+      tokenLabel="tokens"
       tokenCount={0}
     />,
   );
