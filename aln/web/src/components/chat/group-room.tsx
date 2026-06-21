@@ -44,6 +44,7 @@ import {
   removeGroupMember,
   sendGroupMessage,
 } from "@/api";
+import { getApiErrorMessage } from "@/api/client";
 import type { MailboxMessage, SessionInfo, GroupMemberInfo } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -213,7 +214,7 @@ function canRemoveMember(
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Request failed";
+  return getApiErrorMessage(error);
 }
 
 function ContactPicker({
@@ -389,6 +390,8 @@ export function CreateGroupDialog({
       );
       onCreated(room);
       onOpenChange(false);
+    } catch (error) {
+      alert(`Create failed: ${errorMessage(error)}`);
     } finally {
       setCreating(false);
     }

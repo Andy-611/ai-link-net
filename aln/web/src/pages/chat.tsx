@@ -14,6 +14,7 @@ import {
   GroupRoomList,
 } from "@/components/chat/group-room";
 import { listGroupSessions } from "@/api";
+import { getApiErrorMessage } from "@/api/client";
 import type { SessionInfo } from "@/api";
 import type { Contact } from "@/types";
 
@@ -29,6 +30,7 @@ export function ChatPage() {
   const [rooms, setRooms] = useState<SessionInfo[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
   const [createRoomOpen, setCreateRoomOpen] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export function ChatPage() {
   const loadRooms = useCallback(async () => {
     if (!currentUser) return;
     setLoadingRooms(true);
+    setRoomsError(null);
     try {
       const nextRooms = await listGroupSessions(currentUser.entity_uid);
       setRooms(nextRooms);
@@ -59,6 +62,8 @@ export function ChatPage() {
         if (!current) return current;
         return nextRooms.find((room) => room.session_id === current.session_id) ?? null;
       });
+    } catch (error) {
+      setRoomsError(getApiErrorMessage(error));
     } finally {
       setLoadingRooms(false);
     }
@@ -149,7 +154,13 @@ export function ChatPage() {
         {viewMode === "contacts" ? (
           <ContactList onSelect={handleSelectContact} />
         ) : (
-          <GroupRoomList
+          <>
+            {roomsError && (
+              <div className="mx-2 mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+                {roomsError}
+              </div>
+            )}
+            <GroupRoomList
             rooms={rooms}
             selectedRoomId={selectedRoom?.session_id}
             loading={loadingRooms}
@@ -157,6 +168,7 @@ export function ChatPage() {
             onCreate={() => setCreateRoomOpen(true)}
             onRefresh={loadRooms}
           />
+          </>
         )}
       </div>
 

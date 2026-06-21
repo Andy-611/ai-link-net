@@ -16,7 +16,7 @@ description = "AI-Link-Net: A protocol-based application built on Foundation Pro
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "foundation-protocol @ git+https://github.com/FoundationAgents/foundation-protocol.git",
+    "foundation-protocol>=0.1,<0.2",
     "click>=8.3.1",
     "fastapi>=0.116.0",
     "uvicorn>=0.35.0",
