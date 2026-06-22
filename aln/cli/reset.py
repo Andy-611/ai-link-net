@@ -47,14 +47,30 @@ def _stop_ui_process(fp_home_path: Path) -> bool:
 
 def _find_orphan_host_pids(exclude_pids: set[int]) -> list[int]:
     """Find host runtime pids not tracked in config."""
+    if os.name == "nt":
+        command = [
+            "powershell.exe",
+            "-NoProfile",
+            "-Command",
+            (
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.CommandLine -like "
+                "'*uvicorn aln.app.main:app*' } | "
+                "ForEach-Object { '{0} {1}' -f "
+                "$_.ProcessId, $_.CommandLine }"
+            ),
+        ]
+    else:
+        command = ["ps", "-ax", "-o", "pid=,command="]
+
     try:
         result = subprocess.run(
-            ["ps", "-ax", "-o", "pid=,command="],
+            command,
             capture_output=True,
             text=True,
             check=False,
         )
-    except FileNotFoundError:
+    except OSError:
         return []
 
     if result.returncode != 0:
