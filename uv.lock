@@ -10,6 +10,7 @@ dependencies = [
     { name = "click" },
     { name = "fastapi" },
     { name = "foundation-protocol" },
+    { name = "packaging" },
     { name = "python-multipart" },
     { name = "pyyaml" },
     { name = "qrcode" },
@@ -28,7 +29,8 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.3.1" },
     { name = "fastapi", specifier = ">=0.116.0" },
-    { name = "foundation-protocol", git = "https://github.com/FoundationAgents/foundation-protocol.git" },
+    { name = "foundation-protocol", specifier = ">=0.1,<0.2" },
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
@@ -305,11 +307,15 @@ wheels = [
 [[package]]
 name = "foundation-protocol"
 version = "0.1.0"
-source = { git = "https://github.com/FoundationAgents/foundation-protocol.git#4de87133ed16d951a828a5570638b5d16269c324" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "loguru" },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c0/33/b2030df811320a4a4c931f8df215f3e76bc83f8a8f3f506c69b055127740/foundation_protocol-0.1.0.tar.gz", hash = "sha256:b5e06d8494f202b97ebde0f9639e5bb61a9c947cbe93ae39fef096a40c71f053", size = 451924, upload-time = "2026-06-18T16:16:58.411Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/d7/168631de93fa5573fb347014b48c5b1d12a154909c766de6cce1a225053d/foundation_protocol-0.1.0-py3-none-any.whl", hash = "sha256:f3ea819086697f1f502702be2a52588137a1e0565a28ff8ae78da23964f2fdaa", size = 78125, upload-time = "2026-06-18T16:16:56.969Z" },
 ]
 
 [[package]]

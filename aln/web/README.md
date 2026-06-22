@@ -4,7 +4,7 @@
 
 ```bash
 git clone https://github.com/GGyongfeng/My-Vue-App.git
-npm install
+npm ci
 npm run dev
 ```
 

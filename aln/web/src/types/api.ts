@@ -8,7 +8,14 @@ export interface StandardResponse<T = unknown> {
 
 /* --- Entity --- */
 
-export type EntityKind = "agent" | "human" | "tool" | "resource" | "service" | "organization";
+export type EntityKind =
+  | "agent"
+  | "human"
+  | "tool"
+  | "resource"
+  | "service"
+  | "organization"
+  | "arbiter";
 export type EntityTag = "private" | "public" | "foreign";
 export type OnlineStatus = "online" | "offline" | "deleted" | "unknown";
 

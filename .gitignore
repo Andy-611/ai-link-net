@@ -34,17 +34,17 @@ demo/recordings/
 
 # Node.js / Web UI
 node_modules/
-src/web/node_modules/
-src/web/dist/
+aln/web/node_modules/
 **/.vite/
-src/web/vite.config.js
-src/web/vite.config.d.ts
+aln/web/vite.config.js
+aln/web/vite.config.d.ts
 *.tsbuildinfo
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
+!aln/web/package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
@@ -60,8 +60,10 @@ reference/
 /playwright/.auth/
 .playwright-mcp/
 
-# GitHub (local only)
-.github/
+# GitHub release automation
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 
 # Superpowers / Reviews (local only)
 docs/superpowers/

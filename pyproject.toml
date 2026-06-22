@@ -2,12 +2,28 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.hatch.build.targets.wheel]
-# 指定源码包路径
 packages = ["aln"]
+artifacts = ["aln/web/dist/**"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/aln",
+    "/docs",
+    "/example",
+    "/scripts",
+    "/skills",
+    "/test",
+    "/AGENTS.md",
+    "/CONTRIBUTING.md",
+    "/LICENSE",
+    "/README.md",
+    "/README.zh.md",
+    "/pyproject.toml",
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+"aln/web/dist" = "aln/web/dist"
 
 [project]
 name = "ai-link-net"
@@ -15,16 +31,36 @@ version = "0.1.0"
 description = "AI-Link-Net: A protocol-based application built on Foundation Protocol"
 readme = "README.md"
 requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Foundation Agents" },
+]
+keywords = ["agent", "ai", "protocol", "multi-agent", "mcp", "a2a"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
 dependencies = [
-    "foundation-protocol @ git+https://github.com/FoundationAgents/foundation-protocol.git",
+    "foundation-protocol>=0.1,<0.2",
     "click>=8.3.1",
     "fastapi>=0.116.0",
-    "uvicorn>=0.35.0",
-    "websockets>=15.0.0",
+    "packaging>=24.2",
+    "python-multipart>=0.0.26",
     "pyyaml>=6.0",
     "qrcode>=8.2",
-    "python-multipart>=0.0.26",
+    "uvicorn>=0.35.0",
+    "websockets>=15.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/FoundationAgents/ai-link-net"
+Issues = "https://github.com/FoundationAgents/ai-link-net/issues"
+Repository = "https://github.com/FoundationAgents/ai-link-net"
 
 [project.scripts]
 aln = "aln.cli:main"

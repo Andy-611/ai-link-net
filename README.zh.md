@@ -30,12 +30,11 @@ https://github.com/user-attachments/assets/c7e3d5c5-2389-4aad-ab2c-40ce0e7f5d92
 
 ## 安装
 
-需要 Python 3.12+ 和 Node.js。
+需要 Python 3.12+。正式发布包已经包含编译后的 Web UI，用户运行时不需要
+安装 Node.js 或 npm。
 
 ```bash
-git clone https://github.com/FoundationAgents/ai-link-net.git
-cd ai-link-net
-uv tool install -e .
+uv tool install ai-link-net
 ```
 
 ## 使用
@@ -49,6 +48,28 @@ aln init
 这会创建默认 Host、注册你的人类实体、启动后端和 Web UI，并自动打开浏览器。
 
 运行 `aln --help` 查看完整命令参考。
+
+## 更新
+
+每次成功执行 CLI 命令后，AI-Link-Net 最多每 24 小时查询一次 PyPI。发现新的
+正式版本时只显示提示，不会自动修改安装环境。
+
+```bash
+# 立即检查版本，但不安装
+aln update --check
+
+# 升级 uv tool，并重启升级前正在运行的服务
+aln update
+```
+
+设置 `ALN_DISABLE_UPDATE_CHECK=1` 可以关闭后台检查。
+
+源码开发时，需要克隆仓库，在 `aln/web` 中执行 `npm ci && npm run build`，
+再执行 `uv tool install -e .`。源码仓库可以使用
+`aln update --source /path/to/ai-link-net` 继续走 Git 更新流程。
+
+维护者发布新版本时，请按照 [`docs/releasing.md`](docs/releasing.md) 配置版本兼容、
+Trusted Publishing 和 Tag 发布流程。
 
 ### 快速演示
 
